@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Local Python Upscaler Studio</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #0f172a;
+      color: #f8fafc;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .card {
+      background: #1e293b;
+      padding: 32px;
+      border-radius: 12px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+      text-align: center;
+      width: 100%;
+      max-width: 480px;
+      border: 1px solid #334155;
+    }
+    h2 { margin-bottom: 8px; color: #38bdf8; }
+    p.subtitle { color: #94a3b8; font-size: 13px; margin-bottom: 20px; }
+    input[type="file"] {
+      margin-top: 15px;
+      width: 100%;
+      padding: 12px;
+      border-radius: 6px;
+      border: 1px dashed #475569;
+      background: #0f172a;
+      color: #94a3b8;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    button {
+      margin-top: 15px;
+      width: 100%;
+      padding: 14px;
+      border-radius: 6px;
+      border: none;
+      background: #38bdf8;
+      color: #0f172a;
+      font-weight: 700;
+      font-size: 15px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    button:hover { background: #0284c7; color: #fff; }
+    button:disabled { background: #475569; color: #94a3b8; cursor: not-allowed; }
+    #status {
+      margin-top: 16px;
+      font-size: 13px;
+      color: #38bdf8;
+      min-height: 20px;
+    }
+    .img-container {
+      margin-top: 20px;
+      display: none;
+    }
+    .img-container img {
+      max-width: 100%;
+      max-height: 380px;
+      border-radius: 8px;
+      border: 1px solid #334155;
+    }
+    .btn-download {
+      display: inline-block;
+      margin-top: 12px;
+      padding: 10px 18px;
+      background: #22c55e;
+      color: #fff;
+      text-decoration: none;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .btn-download:hover { background: #16a34a; }
+  </style>
+</head>
+<body>
+
+  <div class="card">
+    <h2>Studio Local Python</h2>
+    <p class="subtitle">Upscaler Gratuito Local (Porta 3016)</p>
+
+    <input type="file" id="imageInput" accept="image/*">
+    <button id="sendBtn">Processar no Computador</button>
+
+    <p id="status"></p>
+
+    <div class="img-container" id="imgContainer">
+      <img id="resultImg" alt="Resultado HD">
+      <br>
+      <a id="downloadLink" href="#" target="_blank" class="btn-download" download="imagem_hd.png">Baixar Imagem HD</a>
+    </div>
+  </div>
+
+  <script>
+    const PORT = 3016;
+    const imageInput = document.getElementById('imageInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const status = document.getElementById('status');
+    const imgContainer = document.getElementById('imgContainer');
+    const resultImg = document.getElementById('resultImg');
+    const downloadLink = document.getElementById('downloadLink');
+
+    sendBtn.onclick = async () => {
+      if (!imageInput.files.length) {
+        alert('Selecione uma imagem primeiro!');
+        return;
+      }
+
+      const file = imageInput.files[0];
+      status.innerText = "Lendo imagem...";
+      sendBtn.disabled = true;
+      imgContainer.style.display = 'none';
+
+      const reader = new FileReader();
+
+      reader.onload = async (e) => {
+        try {
+          const base64Data = e.target.result;
+          status.innerText = "Processando localmente via Python...";
+
+          const response = await fetch(`http://localhost:${PORT}/api/upscale`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image: base64Data })
+          });
+
+          const data = await response.json();
+
+          if (data.success) {
+            status.innerText = "Sucesso! Imagem redimensionada e otimizada.";
+            const fullUrl = `http://localhost:${PORT}${data.outputUrl}`;
+            resultImg.src = fullUrl;
+            downloadLink.href = fullUrl;
+            imgContainer.style.display = 'block';
+          } else {
+            status.innerText = "Erro: " + (data.message || "Falha ao processar.");
+          }
+        } catch (err) {
+          console.error(err);
+          status.innerText = "Erro de conexão com o servidor local.";
+        } finally {
+          sendBtn.disabled = false;
+        }
+      };
+
+      reader.readAsDataURL(file);
+    };
+  </script>
+</body>
+</html>
